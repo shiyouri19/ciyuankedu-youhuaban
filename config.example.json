@@ -1,0 +1,20 @@
+{
+  "dataDir": "./data",
+  "host": "127.0.0.1",
+  "port": 7345,
+  "corsOrigin": "",
+  "enabledSources": [
+    "dandanplay",
+    "bangumi"
+  ],
+  "proxy": "",
+  "proxyProbe": [],
+  "bangumiApiBase": "https://api.bgm.tv",
+  "dandanplayAppId": "",
+  "dandanplayAppSecret": "",
+  "dandanplayStrategy": "economy",
+  "dandanplaySafetyRatio": 0.9,
+  "accessToken": "",
+  "userAgent": "fan-zhang/0.5 (personal anime ledger)",
+  "idleShutdownMinutes": 5
+}

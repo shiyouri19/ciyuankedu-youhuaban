@@ -1,0 +1,42 @@
+# 依赖与构建产物
+node_modules/
+
+# 个人配置：含本机路径与代理
+config.json
+
+# 数据文件（正常不会出现在项目里，双保险）
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# 日志与系统文件
+*.log
+logs/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+
+# 工作区元数据，不属于项目
+.workbuddy/
+
+# 内部草稿与本地运维脚本
+方案.md
+推送到GitHub.bat
+
+# 调试临时文件
+.edge-tmp/
+.shot-*.png
+.check.mjs
+.compare/
+.crop*.py
+.commit-msg.txt
+.push-log.txt
+
+# 吉祥物素材：仅本地保留，不随仓库公开
+web/assets/keke-*
+.check-*.png

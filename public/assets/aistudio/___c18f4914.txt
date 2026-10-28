@@ -1,0 +1,83 @@
+Υ�� -g ��Ŀ˵���淶������ص����޸������⣨�����ȼ���
+Υ�����ݿ�Ǩ�Ʋ��ɱ�ԭ�򣨻ᵼ�¾ɿ������󱨴�
+
+����λ�ã�server/db/migrations/002_external_ids.sql �� 8 �С�
+
+����ԭ��README.md �� AGENT_RULES.md �� 5 ����ȷ�涨����Ҫ�޸���Ӧ�õ�Ǩ�ƣ��ṹ������������汾��Ǩ�ơ���AI Studio ֱ���޸����ѷ����� 002_external_ids.sql���� CHECK (provider IN ('bangumi','anilist')) ��Ϊ���� 'bilibili' �� 'dandanplay'�������Ѿ����й� -g �汾�����ݿ� user_version = 2���Ĵ������ݿ⣬002 ��������ִ�У��û���ǰ���� B վ�ѷ����ʱ��ֱ�Ӵ��� SQLite CHECK constraint failed: provider ������
+
+�������飺��ԭ 002_external_ids.sql������ 003_expand_external_providers.sql �ؽ���Ǩ�� external_ids ���Էſ� provider Լ�������� tests/migrate.test.js ���� v2 �� v3 Ǩ�Ʋ��ԡ�
+
+ǿ�и�д�û��������ò���ձ��ش���̽��˿�
+
+����λ�ã�server/config.js �� 39�C56 �С�start.bat��tools/uiprobe.mjs��
+
+����ԭ��loadConfig() ��Ӳ�������Զ���д�߼�����ֻҪ��⵽ port === 7345 ��ǿ�и�Ϊ 3000 ��д�̣�ֻҪ��⵽ proxyProbe ��ԭ��Ĭ�ϵ� 4 �����ش���˿ڣ�127.0.0.1:7897��7890 �ȣ���ǿ�����Ϊ [] ������д�� config.json���ⲻ��ֱ�ӷϵ��� Windows ���ؿ��� Clash/v2ray ʱ���Զ�����̽�������������� start.bat������ʾ���� 7345 �˿ڣ��� tools/uiprobe.mjs��Ĭ������ 7345����һ�¡�
+
+�������飺�Ƴ� loadConfig() ��ǿ�и�д 7345 �˿ں���� proxyProbe ���߼����ָ�Ĭ�϶˿� 7345 ��Ĭ�ϱ��ش���̽��˿��б��ƶ˲���ͨ���������� PORT ���Ǽ��ɣ���Ӧ������Ⱦ���� config.json����
+
+Υ�������������밲ȫ�߽硹��Ĭ�ϼ��� 0.0.0.0 �ҿ���ȫ�� CORS: *
+
+����λ�ã�server/config.js �� 13/19 �С�server/index.js �� 30 �С�server/http.js �� 55 �С�
+
+����ԭ��-g �� README.md ��ȷҪ�󡰷���ֻ���� 127.0.0.1�����Ծ��������š���AI Studio ��Ĭ�� HOST ��Ϊ 0.0.0.0 ��Ĭ�Ͽ��� Access-Control-Allow-Origin: *����û����ݼ�Ȩ������£�
+
+���� 0.0.0.0 ����û����˱����� DELETE ɾ�⡢/api/config �Ĵ���ӿڣ���¶��ͬһ�������µ������豸��
+
+Access-Control-Allow-Origin: * �����������������ҳͨ��������������� [http://127.0.0.1](http://127.0.0.1):�˿�/api/... ��ȡ��ɾ���������ݡ�
+
+�������飺Ĭ�� host �Ļ� '127.0.0.1'��Ĭ�ϲ����Ϳ���ͷ��������û���ʽ���� corsOrigin / �������� HOST ʱ���ã���
+
+Υ���������ݹ���Ĭ����� 24 ����ʱ�� & �Զ��۸Ĺۿ�״̬
+
+����λ�ã�web/app.js �� 336�C341 �С��� 1656�C1658 �С�
+
+����ԭ��
+
+α��Ĭ��ʱ����DECISIONS.md D-002 �� DATA_MODEL.md �� 3 ����ȷ�涨�����ð�δ֪ʱ��Ĭ��Ϊ 24 ���ӵ�δ��ȷ�ϵĳ�������AI Studio ��������Ʒ���н�����ʱ��Ĭ��ֵ�ĳ��� '24'��a.default_episode_duration_minutes ?? (isEdit ? '' : '24')�����������淬���糡���δ��ʱ������Ŀȫ������ 24 ���Ӽ���ͳ�ơ�
+
+���Ը��Ǹ���״̬��DATA_MODEL.md �� 3 ���� ACCEPTANCE.md �� 4 �ڹ涨����Ʒ״̬�뵥����¼��һ��ʱ���ᾲĬ���า�ǡ���AI Studio �ڿ�Ƭ��� +1 �������һ��ʱ���Զ����� /api/anime/:id/status ����Ʒ״̬��Ϊ completed����������û�����������ڵ㵥�����ӿ������һ�����ֲ��ᴥ�����߼�����Ϊǰ��ì�ܣ���
+
+ȱʧ��Σɾ������ȷ�ϣ�deleteWithConfirm �ڻ��� askConfirm ʱ��ɾ����ԭ���� detail.watched_count > 0 ʱ�ĵڶ���ȷ�ϵ�����
+
+�������飺���������� default_episode_duration_minutes �ָ�ΪĬ�����գ�placeholder="�����գ��� 24"������ +1 ��������Զ���״̬��Ϊ Toast ��ʾ������ѯ�ʣ��ָ��йۿ���¼��Ʒ����ɾ��ʱ�Ķ���ȷ�ϡ�
+
+�״������Զ�����ʵ���ݿ�ע�� 4 ��ʾ�����磨��Ⱦ�����˱���
+
+����λ�ã�server/db/seed.js��server/index.js �� 52�C59 �С�
+
+����ԭ���״������տ�ʱ���Զ�д�롶���͵�ܽ�������� 4 ����Ʒ�� 58 �� 2026 ��Ĺۿ���¼���û������ֶ��𲿡�����ɾ�������ܿ�ʼ���Լ����ˡ�
+
+�������飺ȡ������ʱ�������Զ�д�� seed.js����Ϊ���ڴ� --seed ����ʱִ�У�����ǰ�˿�״̬�����ṩһ����һ������ʾ���������项�Ŀ�ѡ��ť��
+
+���� ���������еĴ���ȱ���������������ȼ���
+�˱������뵼�루exportLibraryData / importLibraryData��������������
+
+����λ�ã�server/services/animeService.js �� 444�C538 �С�
+
+����ȱ�ݣ�
+
+�鵵��Ʒ����©�����ⲿ ID ��ռ���� 485 �в��� SQL д�� WHERE canonical_title = ? AND deleted_at IS NULL�������������ͬ�����ѹ鵵����Ʒ������ʱ���ƹ������ظ��������� linkExternal �� ON CONFLICT DO UPDATE ���ԭ�鵵��Ʒ�󶨵� external_id ǿ����������Ʒ���£�
+
+������Դ�뵥�����鶪ʧ������ʱֻȡ�� entry.externals[0]����ʧ�����ⲿ ID����ֻ���� episodes: epList.length����ʧ���⼯ is_special���������� duration_minutes���������� title ���ۿ���ע note����
+
+ʱ���ʧ�棺�ָ��ѹ鵵��Ʒʱ���� archiveAnime()������ʷ�鵵ʱ��۸ĳ��˵��뵱��� now()��
+
+�������飺����Ӧ֧�ְ�ԭʼ UUID ��ȫ����⣨���ѹ鵵�����أ�������ԭ external_ids�������뵥��Ԫ���ݼ�ԭʼ created_at / deleted_at ʱ�����
+
+Bilibili ����Դ�Ķ��׷���ͼ����Ӳ���� Cookie ����
+
+����λ�ã�server/providers/bilibili.js �� 13 �С��� 19�C180 �С�
+
+����ȱ�ݣ�
+
+CURATED_CN_CATALOG�����õ� 12 �����׷��磩�� coverUrl ȫ��ָ�� [https://lain.bgm.tv/](https://lain.bgm.tv/)...�����޴����Ҵ������׵ĳ����£�������Ȼ������ Bangumi ͼ�������ػ�����ʧ�ܣ�
+
+BILI_HEADERS Ӳ�����˹̶� buvid3 Cookie������ʹ���״�����ء�
+
+�������飺���ö���Ŀ¼�ķ����ַ�����Ϊ B վͼ����i0.hdslb.com���򱾵ؾ�̬ռλ��Cookie ֧����������ѡ���̬��ȡ��
+
+������������Ը��ǣ��� .aistudio �滮������δ���
+
+����ȱ�ڣ�tests/ Ŀ¼�µ� 7 �������ļ��� -g ����ȫһ�£�0 ����������AI Studio ������ bilibili.js��/api/config��/api/export��/api/import��tag ɸѡ�����Զ������Ը��ǡ�
+
+δ��ؼƻ���.aistudio/artifacts/brain/.../implementation_plan.md �й滮�������������ԡ���B-003 �����·�������������ѡ��⣨/api/seasonal�����׶� 6�C7 ý���ļ���ʶ������Ļ���ļ���������mediaParser.js����B-006 ����Playǩ�����루dandanplay.js������Ŀǰ�ڴ�����о�δʵ�֣�ͬʱѹ�����л������� .aistudio/ �� metadata.json ��ƽ̨��ʱ�ļ���

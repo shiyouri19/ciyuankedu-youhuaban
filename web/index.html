@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-ui-theme="washi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#080b14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="次元刻度">
+<title>次元刻度 · 动画观看手账</title>
+<meta name="description" content="个人动画观看手账与分集进度管理工具，支持弹弹Play与 Bangumi 双源中文检索聚合、季度新番全量导览与批量入库、本地媒体识别及跨端云同步。">
+<meta property="og:title" content="次元刻度 · 动画观看手账">
+<meta property="og:description" content="个人动画观看手账与分集进度管理工具，支持弹弹Play与 Bangumi 双源中文检索聚合、季度新番全量导览与批量入库、本地媒体识别及跨端云同步。">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="shortcut icon" href="/icon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body data-ui-theme="washi">
+<div class="app-shell">
+  <aside id="studioSidebar" class="studio-sidebar" aria-label="主导航"></aside>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand" id="brandHome" title="返回账本首页">
+        <img src="/icon.png" alt="" class="brand-logo" width="28" height="28">
+        <span>次元刻度</span>
+        <span class="brand-seal">放映室</span>
+        <span class="brand-sub">深夜动画手账与媒体台账</span>
+      </div>
+      <div class="searchbox">
+        <input id="q" type="search" placeholder="搜索库内番名、简称、原名或别名… (按 / 聚焦)" autocomplete="off" spellcheck="false">
+      </div>
+      <button id="seasonalBtn" class="btn" type="button" title="按年份和季度浏览当季新番并批量勾选入库 (快捷键 s)">新番导览</button>
+      <button id="mediaScanBtn" class="btn" type="button" title="选择本地视频文件夹自动清洗字幕组文件名并同步集数 (快捷键 m)">媒体库识别</button>
+      <button id="statsBtn" class="btn" type="button" title="查看全年 365 天追番热力图与统计报表">统计记录</button>
+      <button id="themeToggleBtn" class="btn theme-toggle-btn" type="button" title="切换日间暖米和纸 / 深夜咖啡暗调手帐 (快捷键 d)">🌙 深夜手帐</button>
+      <button id="settingsBtn" class="btn" type="button" title="数据源、弹弹Play密钥、云服务器双向同步与数据备份设置 (快捷键 ,)">设置</button>
+      <button id="addBtn" class="btn primary" type="button">+ 新增作品</button>
+    </header>
+
+    <nav class="filters">
+      <div class="tabs" id="tabs"></div>
+      <div class="filters-right">
+        <div id="layoutSwitcher" class="layout-switcher" role="group" aria-label="视图布局切换 (快捷键 1/2/3)"></div>
+        <div class="sortbox" id="tagFilterWrap" hidden>
+          <label for="tagFilter">标签</label>
+          <select id="tagFilter">
+            <option value="">全部标签</option>
+          </select>
+        </div>
+        <button id="batchManageBtn" class="link-btn" type="button" title="进入批量管理模式，支持多选作品批量修改状态、收藏、追加标签或归档">批量管理</button>
+        <button id="enrichAllBtn" class="link-btn" type="button" title="为缺少封面的作品从数据源补齐资料">补全缺失资料</button>
+        <div class="sortbox">
+          <label for="sort">排序</label>
+          <select id="sort">
+            <option value="updated_at:desc">最近更新</option>
+            <option value="canonical_title:asc">标题 A→Z</option>
+            <option value="release_year:desc">年份新→旧</option>
+            <option value="rating:desc">评分高→低</option>
+          </select>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <div id="watchingFocusStrip" class="watching-focus-strip" hidden></div>
+      <div id="ledgerBatchBar" class="seasonal-bar ledger-batch-bar" hidden></div>
+      <div id="list" class="grid" aria-live="polite"></div>
+      <section id="seasonal" class="seasonal-view" hidden></section>
+      <section id="stats" class="stats" hidden></section>
+      <div id="empty" class="empty" hidden>
+        <img id="emptyMascotImg" src="/assets/keke-pack/sticker-watch.png" alt="刻刻 Keke" class="empty-mascot" width="128" height="128" title="点击与刻刻互动">
+        <p id="emptyTitle">放映室还没有收录作品呢</p>
+        <p class="empty-hint" id="emptyHint">点右上角「+ 新增作品」或去「新番导览」挑几部喜欢的番剧记入放映室吧～</p>
+      </div>
+      <div id="loading" class="loading" hidden>
+        <img src="/assets/keke-pack/chibi-sit.png" alt="" class="loading-mascot" width="48" height="48">
+        <span>刻刻正在为你翻开手账…</span>
+      </div>
+    </main>
+
+    <footer class="statusbar">
+      <span id="stat"></span>
+      <span id="serverStatusNote" class="statusbar-note">数据保存在服务端 SQLite，支持随时导出或与云服务器双向同步</span>
+    </footer>
+  </div>
+</div>
+
+<!-- 右下角常驻看板娘「刻刻 (Keke)」手帐司书与深夜放映员 -->
+<div id="mascotDock" class="mascot-dock" title="点击与「刻刻」互动、摸摸头、随机翻牌或查看全套人设图鉴 (快捷键 k)">
+  <div id="mascotStickerStage" class="mascot-sticker-stage" hidden></div>
+  <div id="mascotBubble" class="mascot-bubble" hidden></div>
+  <button id="mascotTrigger" class="mascot-trigger" type="button" aria-label="看板娘刻刻" data-mood="normal">
+    <img id="mascotTriggerImg" src="/assets/keke-pack/mood-normal.png" alt="刻刻 Keke" width="60" height="60">
+    <span class="mascot-tag" id="mascotTriggerTag">刻刻</span>
+  </button>
+</div>
+
+<aside id="drawer" class="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <span id="drawerTitle">作品详情</span>
+    <div class="drawer-head-actions" id="drawerActions"></div>
+    <button id="drawerClose" class="icon-btn" type="button" title="关闭">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+<div id="scrim" class="scrim" hidden></div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <span id="modalTitle">新增作品</span>
+      <button id="modalClose" class="icon-btn" type="button" title="关闭">×</button>
+    </div>
+    <form id="animeForm" class="modal-body"></form>
+  </div>
+</div>
+
+<div id="confirmModal" class="modal" hidden>
+  <div class="modal-card confirm-card">
+    <div class="modal-head">
+      <span id="confirmTitle">确认操作</span>
+      <button id="confirmClose" class="icon-btn" type="button" title="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="confirmBody" class="confirm-body"></div>
+      <div class="form-actions">
+        <button id="confirmCancel" class="btn ghost" type="button">取消</button>
+        <button id="confirmOk" class="btn primary" type="button">确认</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>
