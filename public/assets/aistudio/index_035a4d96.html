@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-ui-theme="washi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f1e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="次元刻度">
+<title>次元刻度 · 动画观看手账</title>
+<meta name="description" content="个人动画观看手账与分集进度管理工具，支持弹弹Play与 Bangumi 双源中文检索聚合、季度新番全量导览与批量入库、本地媒体识别及跨端云同步。">
+<meta property="og:title" content="次元刻度 · 动画观看手账">
+<meta property="og:description" content="个人动画观看手账与分集进度管理工具，支持弹弹Play与 Bangumi 双源中文检索聚合、季度新番全量导览与批量入库、本地媒体识别及跨端云同步。">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.png" type="image/png">
+<link rel="shortcut icon" href="/icon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="/icon.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body data-ui-theme="washi">
+<div class="app-shell">
+  <aside id="studioSidebar" class="side" aria-label="主导航"></aside>
+  <div class="app">
+    <header class="topbar">
+      <div class="searchbox">
+        <input id="q" type="search" placeholder="搜索库内番名、简称、原名或别名（按 / 聚焦）" autocomplete="off" spellcheck="false" aria-label="搜索库内作品">
+      </div>
+      <button id="addBtn" class="btn primary" type="button" title="新增作品（快捷键 n）">+ 新增作品</button>
+    </header>
+
+    <nav class="filters" aria-label="作品筛选">
+      <div class="tabs" id="tabs"></div>
+      <div class="filters-right">
+        <div id="layoutSwitcher" class="layout-switcher" role="group" aria-label="视图布局切换 (快捷键 1/2/3)"></div>
+        <div class="sortbox" id="tagFilterWrap" hidden>
+          <label for="tagFilter">标签</label>
+          <select id="tagFilter">
+            <option value="">全部标签</option>
+          </select>
+        </div>
+        <div class="sortbox">
+          <label for="sort">排序</label>
+          <select id="sort">
+            <option value="updated_at:desc">最近更新</option>
+            <option value="canonical_title:asc">标题 A→Z</option>
+            <option value="release_year:desc">年份新→旧</option>
+            <option value="rating:desc">评分高→低</option>
+          </select>
+        </div>
+        <details class="more-menu" id="moreMenu">
+          <summary class="btn ghost small" title="批量管理、补全缺失资料">更多</summary>
+          <div class="more-pop">
+            <button id="batchManageBtn" class="more-item" type="button" title="多选作品后批量修改状态、收藏、标签或归档">批量管理</button>
+            <button id="enrichAllBtn" class="more-item" type="button" title="为缺少封面的作品从数据源补齐资料">补全缺失资料</button>
+          </div>
+        </details>
+      </div>
+    </nav>
+
+    <main>
+      <section id="home" class="home" aria-label="放映室首页" hidden></section>
+      <div id="ledgerBatchBar" class="seasonal-bar ledger-batch-bar" hidden></div>
+      <div id="list" class="grid" aria-live="polite" hidden></div>
+      <section id="seasonal" class="seasonal-view" hidden></section>
+      <section id="stats" class="stats" hidden></section>
+      <div id="empty" class="empty" hidden>
+        <img src="/assets/keke-chibi.png" alt="刻刻" class="empty-mascot" width="132" height="160">
+        <p id="emptyTitle">放映室还没有收录作品呢</p>
+        <p class="empty-hint" id="emptyHint">点右上角「+ 新增作品」或去「新番导览」挑几部喜欢的番剧记入放映室吧～</p>
+      </div>
+      <div id="loading" class="loading" hidden>正在翻开手账…</div>
+    </main>
+
+    <footer class="statusbar">
+      <span id="stat"></span>
+      <span id="serverStatusNote" class="statusbar-note">数据保存在服务端 SQLite，支持随时导出或与云服务器双向同步</span>
+    </footer>
+  </div>
+</div>
+
+<!-- 常驻小看板娘「刻刻」：首页有专属大卡片，其余页面保留右下角小头像 -->
+<div id="mascotDock" class="mascot-dock">
+  <div id="mascotBubble" class="mascot-bubble" hidden></div>
+  <button id="mascotTrigger" class="mascot-trigger" type="button" aria-label="和刻刻说话">
+    <img src="/assets/keke-chibi.png" alt="" width="52" height="62">
+  </button>
+</div>
+
+<aside id="drawer" class="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <span id="drawerTitle">作品详情</span>
+    <div class="drawer-head-actions" id="drawerActions"></div>
+    <button id="drawerClose" class="icon-btn" type="button" title="关闭">×</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+<div id="scrim" class="scrim" hidden></div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-head">
+      <span id="modalTitle">新增作品</span>
+      <button id="modalClose" class="icon-btn" type="button" title="关闭">×</button>
+    </div>
+    <form id="animeForm" class="modal-body"></form>
+  </div>
+</div>
+
+<div id="confirmModal" class="modal" hidden>
+  <div class="modal-card confirm-card">
+    <div class="modal-head">
+      <span id="confirmTitle">确认操作</span>
+      <button id="confirmClose" class="icon-btn" type="button" title="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="confirmBody" class="confirm-body"></div>
+      <div class="form-actions">
+        <button id="confirmCancel" class="btn ghost" type="button">取消</button>
+        <button id="confirmOk" class="btn primary" type="button">确认</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>

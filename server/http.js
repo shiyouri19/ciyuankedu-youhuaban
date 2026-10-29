@@ -86,8 +86,24 @@ const MIME = {
 
 const LEGACY_ASSET_FALLBACKS = {
   '/assets/keke-chibi.png': '/assets/keke-chibi.svg',
-  '/assets/keke-sheet.jpg': '/assets/keke-sheet.svg'
+  '/assets/keke-sheet.jpg': '/assets/keke-sheet.svg',
+  '/assets/keke-hero.jpg': '/assets/keke-pack/hero-main.png',
+  '/assets/keke-smile.jpg': '/assets/keke-pack/avatar-smile.png',
+  '/assets/keke-happy.jpg': '/assets/keke-pack/avatar-happy.png',
+  '/assets/keke-serious.jpg': '/assets/keke-pack/avatar-default.png',
+  '/assets/keke-confused.jpg': '/assets/keke-pack/avatar-curious.png',
+  '/assets/keke-shy.jpg': '/assets/keke-pack/avatar-shy.png',
+  '/assets/keke-tease.jpg': '/assets/keke-pack/avatar-wink.png'
 };
+
+try {
+  const samplePackFile = path.resolve(WEB_DIR, 'assets', 'keke-pack', 'mood-normal.png');
+  if (!fs.existsSync(samplePackFile)) {
+    import('../tools/crop-keke-assets.mjs').catch(() => {});
+  }
+} catch {
+  /* ignore */
+}
 
 const MAX_BODY = 5 * 1024 * 1024;
 

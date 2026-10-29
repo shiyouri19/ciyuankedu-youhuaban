@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ciyuan-kedu-shell-v1.4.0';
+const CACHE_NAME = 'ciyuan-kedu-shell-v1.5.5';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -6,6 +6,7 @@ const SHELL_ASSETS = [
   '/app.js',
   '/manifest.json',
   '/icon.svg',
+  '/assets/keke-pack/hero-main.png',
   '/assets/keke-pack/mood-normal.png',
   '/assets/keke-pack/mood-cheer.png',
   '/assets/keke-pack/mood-curious.png',
@@ -21,6 +22,11 @@ const SHELL_ASSETS = [
   '/assets/keke-pack/pose-work.png',
   '/assets/keke-pack/pose-read.png',
   '/assets/keke-pack/pose-heart.png',
+  '/assets/keke-pack/chibi-stand.png',
+  '/assets/keke-pack/chibi-happy.png',
+  '/assets/keke-pack/chibi-think.png',
+  '/assets/keke-pack/chibi-sleep.png',
+  '/assets/keke-pack/chibi-wave.png',
   '/assets/keke-pack/chibi-sit.png',
   '/assets/keke-pack/deco-quote.png',
   '/assets/keke-chibi.svg',

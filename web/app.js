@@ -110,7 +110,7 @@ const state = {
   currentId: null,
   editingId: null,
   loading: false,
-  view: 'list',
+  view: 'home',
   uiTheme: (() => {
     try {
       const saved = localStorage.getItem(UI_THEME_STORAGE_KEY);
@@ -124,6 +124,9 @@ const state = {
   heroFilter: 'all',
   heroCollapsed: false,
   epAnnotateMode: false,
+  homeStats: null,
+  mediaFiles: [],
+  kekeMood: null,
   mediaSummaryByAnime: new Map(),
   layoutMode: (() => {
     try {
@@ -381,6 +384,8 @@ function buildFallbackPosterDataUri(title) {
 
 function paintCover(node, title, coverPath, width = 400) {
   node.style.background = coverStyle(title);
+  if (!node.style.position) node.style.position = 'relative';
+  node.style.overflow = 'hidden';
   const initial = el('span', 'cover-initial', firstChar(title));
   node.appendChild(initial);
 
@@ -515,6 +520,7 @@ function applyUiTheme(themeKey, { switchRecommendedLayout = false, silent = fals
     setMascotMood(getDefaultMascotMood(), { animate: !silent });
   }
   if (state.view === 'list') renderList();
+  else if (state.view === 'home' && typeof renderHome === 'function') renderHome();
   if (!silent) {
     toast(`已切换至「${ed.name}」`);
     if (ed.key === 'washi-night' && typeof showMascotStickerStage === 'function') {
@@ -559,74 +565,64 @@ function renderLayoutSwitcher() {
   }
 }
 
+const NAV_ICONS = {
+  home: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 10 3.5l7 6V16a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 16V9.5Z"/><path d="M7.5 17.5V12h5v5.5"/></svg>',
+  list: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.5h10A2.5 2.5 0 0 1 16 7v9.5H6A2.5 2.5 0 0 1 3.5 14V4.5Z"/><path d="M3.5 14A2.5 2.5 0 0 1 6 11.5h10"/><path d="M7 7.5h5"/></svg>',
+  seasonal: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="12.5" rx="2"/><path d="M3 8.5h14M7 3v3M13 3v3"/><circle cx="7.5" cy="12" r="1" fill="currentColor"/><circle cx="12.5" cy="12" r="1" fill="currentColor"/></svg>',
+  stats: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V10M8.5 16V5M13 16V8M17 16v-4"/></svg>',
+  media: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6a1.5 1.5 0 0 1 1.5-1.5h3.2l1.6 2H15.5A1.5 1.5 0 0 1 17 8v6.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5V6Z"/></svg>',
+  share: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="13" height="13" rx="2"/><circle cx="7.5" cy="8" r="1.3"/><path d="m4.5 14.5 4-4 3 3 2-2 2.5 2.5"/></svg>',
+  keke: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.2 12 7.4l4.6.6-3.3 3.2.8 4.6L10 13.6 5.9 15.8l.8-4.6L3.4 8 8 7.4 10 3.2Z"/></svg>',
+  theme: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15.8 12.6A6.5 6.5 0 0 1 7.4 4.2a6.5 6.5 0 1 0 8.4 8.4Z"/></svg>',
+  settings: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 3.2v1.6M10 15.2v1.6M3.2 10h1.6M15.2 10h1.6M5.2 5.2l1.1 1.1M13.7 13.7l1.1 1.1M14.8 5.2l-1.1 1.1M6.3 13.7l-1.1 1.1"/></svg>'
+};
+
+function navIcon(key) {
+  const span = el('span', 'side-icon');
+  span.innerHTML = NAV_ICONS[key] || '';
+  return span;
+}
+
 function renderStudioSidebar() {
   const side = $('#studioSidebar');
   if (!side) return;
   side.innerHTML = '';
 
-  const brandRow = el('div', 'studio-side-brand');
-  const brandLeft = el('div', 'studio-side-brand-left');
+  const brand = el('button', 'side-brand');
+  brand.type = 'button';
   const logoImg = document.createElement('img');
   logoImg.src = '/icon.png';
   logoImg.alt = '';
-  logoImg.className = 'studio-side-brand-logo';
-  brandLeft.appendChild(logoImg);
-  brandLeft.appendChild(el('span', '', '次元刻度'));
-  brandRow.appendChild(brandLeft);
-  brandRow.appendChild(el('span', 'studio-side-tag', 'SCREENING'));
-  side.appendChild(brandRow);
+  logoImg.className = 'side-brand-logo';
+  brand.appendChild(logoImg);
+  const brandText = el('div', 'side-brand-text');
+  brandText.appendChild(el('span', 'side-brand-title', '次元刻度'));
+  brandText.appendChild(el('span', 'side-brand-sub', 'Anime Tracker'));
+  brand.appendChild(brandText);
+  brand.addEventListener('click', () => switchView('home'));
+  side.appendChild(brand);
 
   const counts = computeStatusCounts();
-  side.appendChild(el('div', 'studio-side-section', '放映室导航'));
+  const primary = el('div', 'side-group side-group-primary');
   const navItems = [
-    { key: 'list', label: '放映室主页 · 番剧库', badge: counts.all },
-    { key: 'seasonal', label: '新番导览 · 放送周历', badge: '双源' },
-    { key: 'stats', label: '观看记录 · 打卡热力图', badge: '统计' }
+    { key: 'home', icon: 'home', label: '首页', badge: null },
+    { key: 'list', icon: 'list', label: '番剧库', badge: counts.all },
+    { key: 'seasonal', icon: 'seasonal', label: '新番导览', badge: null },
+    { key: 'stats', icon: 'stats', label: '观看记录', badge: null }
   ];
   for (const nav of navItems) {
-    const btn = el('button', 'studio-side-btn' + (state.view === nav.key ? ' active' : ''));
+    const btn = el('button', 'side-btn' + (state.view === nav.key ? ' active' : ''));
     btn.type = 'button';
-    btn.appendChild(el('span', '', nav.label));
-    btn.appendChild(el('span', 'studio-side-count', String(nav.badge)));
+    btn.appendChild(navIcon(nav.icon));
+    btn.appendChild(el('span', 'side-label', nav.label));
+    if (nav.badge != null) {
+      btn.appendChild(el('span', 'side-count', String(nav.badge)));
+    }
     btn.addEventListener('click', () => switchView(nav.key));
-    side.appendChild(btn);
+    primary.appendChild(btn);
   }
+  side.appendChild(primary);
 
-  side.appendChild(el('div', 'studio-side-section', '观看状态筛选'));
-  const statusItems = [
-    { key: '', label: '全部馆藏作品', count: counts.all },
-    { key: 'watching', label: '正在追番 (在看)', count: counts.watching },
-    { key: 'want', label: '待看清单 (想看)', count: counts.want },
-    { key: 'completed', label: '已看完归档', count: counts.completed },
-    { key: 'paused', label: '暂停搁置', count: counts.paused },
-    { key: '__favorite', label: '★ 特别收藏', count: counts.favorite }
-  ];
-  for (const stItem of statusItems) {
-    const isAct =
-      state.view === 'list' &&
-      !state.archived &&
-      (stItem.key === '__favorite' ? state.favorite : !state.favorite && state.status === stItem.key);
-    const btn = el('button', 'studio-side-btn' + (isAct ? ' active' : ''));
-    btn.type = 'button';
-    btn.appendChild(el('span', '', stItem.label));
-    btn.appendChild(el('span', 'studio-side-count', String(stItem.count)));
-    btn.addEventListener('click', () => {
-      state.archived = false;
-      if (stItem.key === '__favorite') {
-        state.favorite = true;
-        state.status = '';
-      } else {
-        state.favorite = false;
-        state.status = stItem.key;
-      }
-      renderTabs();
-      if (state.view !== 'list') switchView('list');
-      else load();
-    });
-    side.appendChild(btn);
-  }
-
-  side.appendChild(el('div', 'studio-side-section', '媒体库与数据管理'));
   let mediaTotalCount = 0;
   let mediaMissingCount = 0;
   for (const m of state.mediaSummaryByAnime.values()) {
@@ -634,67 +630,41 @@ function renderStudioSidebar() {
     mediaMissingCount += m.missing || 0;
   }
   const mediaBadge = mediaMissingCount > 0
-    ? `缺失${mediaMissingCount}`
+    ? `缺 ${mediaMissingCount}`
     : mediaTotalCount > 0
-      ? `${mediaTotalCount}集`
-      : '扫描';
+      ? String(mediaTotalCount)
+      : null;
 
   const isNightTheme = state.uiTheme === 'washi-night';
+  side.appendChild(el('div', 'side-section', '工具'));
+  const tools = el('div', 'side-group side-group-tools');
   const toolActions = [
-    { label: '本地媒体库与匹配结果', badge: mediaBadge, onClick: () => openMediaScanModal() },
-    { label: '生成年度总结/喜好表', badge: '海报', onClick: () => openShareGeneratorModal('poster') },
-    { label: '看板娘「刻刻」档案', badge: '立绘', onClick: () => openMascotGalleryModal() },
+    { icon: 'media', label: '本地媒体库', badge: mediaBadge, onClick: () => openMediaScanModal() },
+    { icon: 'share', label: '年度总结与喜好表', badge: null, onClick: () => openShareGeneratorModal('poster') },
+    { icon: 'keke', label: '刻刻的设定', badge: null, onClick: () => openMascotGalleryModal() },
     {
-      label: isNightTheme ? '切换：☀️ 日间暖米和纸' : '切换：🌙 深夜咖啡手帐',
-      badge: isNightTheme ? '夜读中' : '昼/夜',
+      icon: 'theme',
+      label: isNightTheme ? '昼夜手帐 · 夜读' : '昼夜手帐 · 日间',
+      badge: isNightTheme ? '🌙' : '☀️',
       onClick: () => toggleWashiTheme()
     },
-    { label: '数据源、云同步与设置', badge: '配置', onClick: () => openSettingsModal() }
+    { icon: 'settings', label: '设置与数据', badge: null, mobileKeep: true, onClick: () => openSettingsModal() }
   ];
   for (const t of toolActions) {
-    const btn = el('button', 'studio-side-btn');
+    const btn = el('button', 'side-btn' + (t.mobileKeep ? ' keep-mobile' : ''));
     btn.type = 'button';
-    btn.appendChild(el('span', '', t.label));
-    btn.appendChild(el('span', 'studio-side-count', t.badge));
+    btn.appendChild(navIcon(t.icon));
+    btn.appendChild(el('span', 'side-label', t.label));
+    if (t.badge != null) {
+      btn.appendChild(el('span', 'side-count', t.badge));
+    }
     btn.addEventListener('click', t.onClick);
-    side.appendChild(btn);
+    tools.appendChild(btn);
   }
+  side.appendChild(tools);
 
-  const kekeSideCard = el('div', 'keke-sidebar-card');
-  kekeSideCard.title = '点击摸摸刻刻的头，或右键查看全套人设素材图鉴';
-  const sidePoseImg = document.createElement('img');
-  sidePoseImg.src =
-    isNightTheme || isLateNightHour()
-      ? '/assets/keke-pack/pose-read.png'
-      : counts.watching > 0
-        ? '/assets/keke-pack/pose-work.png'
-        : '/assets/keke-pack/pose-cat.png';
-  sidePoseImg.alt = '刻刻';
-  const sideInfo = el('div', 'keke-sidebar-card-info');
-  const sideTitle = el('div', 'keke-sidebar-card-title');
-  sideTitle.appendChild(el('span', '', '刻刻 & 白猫小助手'));
-  sideTitle.appendChild(el('span', 'studio-side-count', isNightTheme ? '咖啡夜读' : '摸摸♡'));
-  const sideSub = el(
-    'div',
-    'keke-sidebar-card-sub',
-    isNightTheme
-      ? '深夜咖啡已备好 · 点我摸头互动'
-      : counts.watching > 0
-        ? `正陪你追看 ${counts.watching} 部番剧 · 点我互动`
-        : '点我摸摸头或随机翻牌推荐～'
-  );
-  sideInfo.appendChild(sideTitle);
-  sideInfo.appendChild(sideSub);
-  kekeSideCard.appendChild(sidePoseImg);
-  kekeSideCard.appendChild(sideInfo);
-  kekeSideCard.addEventListener('click', () => patMascotHead());
-  side.appendChild(kekeSideCard);
-
-  const foot = el('div', 'studio-side-footer');
-  foot.appendChild(
-    el('div', '', isNightTheme ? '主题：深夜咖啡手帐 (Midnight)' : '主题：日间暖米和纸 (Washi)')
-  );
-  foot.appendChild(el('div', '', '快捷键：/ 搜索 · d 昼夜切换 · k 呼唤刻刻'));
+  const foot = el('div', 'side-foot');
+  foot.textContent = '快捷键　/ 搜索　n 新增　d 昼夜　1 2 3 视图';
   side.appendChild(foot);
 }
 
@@ -2014,7 +1984,9 @@ function ensureCalendarWarm() {
     .then((res) => {
       if (res && Array.isArray(res.days)) {
         state.calendarData = res;
-        if (state.view === 'list') {
+        if (state.view === 'home' && typeof renderHome === 'function') {
+          renderHome();
+        } else if (state.view === 'list') {
           const strip = $('#watchingFocusStrip');
           const sourceList = state.allLibraryList.length ? state.allLibraryList : state.list;
           const watchingItems = sourceList.filter((it) => !it.deleted_at && it.status === 'watching');
@@ -2168,7 +2140,8 @@ function renderWashiFocus(strip, items) {
       btn.type = 'button';
       btn.addEventListener('click', () => {
         state.heroFilter = key;
-        renderList();
+        if (state.view === 'home') renderHome();
+        else renderList();
       });
       return btn;
     };
@@ -2213,7 +2186,8 @@ function renderWashiFocus(strip, items) {
       }`;
       dot.addEventListener('click', () => {
         state.heroAnimeId = it.id;
-        renderList();
+        if (state.view === 'home') renderHome();
+        else renderList();
       });
       switcher.appendChild(dot);
     }
@@ -2344,7 +2318,8 @@ function renderWashiFocus(strip, items) {
   foldBtn.title = '折叠或展开顶部正在追看横幅';
   foldBtn.addEventListener('click', () => {
     state.heroCollapsed = !state.heroCollapsed;
-    renderList();
+    if (state.view === 'home') renderHome();
+    else renderList();
   });
   actions.appendChild(foldBtn);
 
@@ -2355,149 +2330,10 @@ function renderWashiFocus(strip, items) {
 function renderWatchingFocusStrip() {
   const strip = $('#watchingFocusStrip');
   if (!strip) return;
-  // 每次渲染列表/焦点条时同步看板娘默认状态
+  // 正在追看焦点横幅已迁移至「首页」(#home) 第二行，番剧库仅展示书架（海报网格/台账/看板）
   setMascotMood(getDefaultMascotMood());
-  if (state.view !== 'list' || state.archived || state.keyword || state.status === 'completed') {
-    strip.hidden = true;
-    strip.innerHTML = '';
-    return;
-  }
-  const sourceList = state.allLibraryList.length ? state.allLibraryList : state.list;
-  const watchingItems = sourceList.filter((it) => !it.deleted_at && it.status === 'watching');
-  if (watchingItems.length === 0) {
-    strip.hidden = true;
-    strip.innerHTML = '';
-    return;
-  }
-
-  strip.hidden = false;
+  strip.hidden = true;
   strip.innerHTML = '';
-
-  // 手帐主题（含日间暖米和纸 washi 与深夜咖啡手帐 washi-night）：走独立焦点横幅
-  const curTheme = document.documentElement.getAttribute('data-ui-theme') || 'washi';
-  if (curTheme === 'washi' || curTheme === 'washi-night') {
-    renderWashiFocus(strip, watchingItems);
-    return;
-  }
-
-  const head = el('div', 'watching-focus-head');
-  const titleWrap = el('div', 'watching-focus-title');
-  titleWrap.appendChild(el('span', 'watching-focus-dot'));
-  titleWrap.appendChild(el('span', '', `正在追番 · 快捷打卡 (${watchingItems.length} 部)`));
-  head.appendChild(titleWrap);
-
-  const rightWrap = el('div', 'inline-row');
-  const mascotCompanion = el('div', 'watching-mascot-companion');
-  mascotCompanion.title = '点击查看手帐司书「刻刻 (Keke)」设定档案';
-  const mImg = document.createElement('img');
-  mImg.src = MASCOT_MOODS[currentMascotMood]?.avatar || '/assets/keke-chibi.svg';
-  mImg.alt = '刻刻';
-  mImg.className = 'watching-mascot-avatar';
-  const mSpeech = el('span', 'watching-mascot-speech');
-  mSpeech.innerHTML = getMascotContextQuote(watchingItems);
-  mascotCompanion.appendChild(mImg);
-  mascotCompanion.appendChild(mSpeech);
-  mascotCompanion.addEventListener('click', () => openMascotGalleryModal());
-  rightWrap.appendChild(mascotCompanion);
-
-  if (watchingItems.length > 4) {
-    const expandBtn = el(
-      'button',
-      'link-btn',
-      state.watchingStripExpanded ? '收起展示前 4 部' : `展开全部 (${watchingItems.length} 部)`
-    );
-    expandBtn.type = 'button';
-    expandBtn.addEventListener('click', () => {
-      state.watchingStripExpanded = !state.watchingStripExpanded;
-      renderWatchingFocusStrip();
-    });
-    rightWrap.appendChild(expandBtn);
-  }
-  head.appendChild(rightWrap);
-  strip.appendChild(head);
-
-  const cardsWrap = el('div', 'watching-focus-cards');
-  const displayItems = state.watchingStripExpanded ? watchingItems : watchingItems.slice(0, 4);
-  for (const item of displayItems) {
-    const mini = el('div', 'watching-mini-card');
-    const cov = el('div', 'watching-mini-cover');
-    paintCover(cov, item.canonical_title, item.cover_path, 100);
-    mini.appendChild(cov);
-
-    const info = el('div', 'watching-mini-info');
-    info.appendChild(el('div', 'watching-mini-name', item.canonical_title));
-    const total = Number(item.episode_total ?? 0);
-    const current = Number(item.episode_current ?? 0);
-    const watched = Number(item.episode_watched ?? 0);
-    const subRow = el('div', 'watching-mini-sub');
-    const nextEpNum = total > 0 && watched < total ? Math.min(total, (current || watched) + 1) : null;
-    subRow.appendChild(
-      el(
-        'span',
-        '',
-        total > 0
-          ? `已看 ${watched}/${total} 集${nextEpNum ? ` · 下一集 EP.${nextEpNum}` : ' · 已看完'}`
-          : '未设总集数 · 点击设置'
-      )
-    );
-    const mediaPill = buildMediaStatusPill(item.id);
-    if (mediaPill) subRow.appendChild(mediaPill);
-    info.appendChild(subRow);
-
-    if (total > 0) {
-      const miniBar = el('div', 'progress-bar watching-mini-bar');
-      const miniFill = el('div', 'progress-fill');
-      miniFill.style.width = `${Math.min(100, Math.round((watched / total) * 100))}%`;
-      miniBar.appendChild(miniFill);
-      info.appendChild(miniBar);
-    }
-    mini.appendChild(info);
-
-    if (total > 0) {
-      const done = watched >= total;
-      const bump = el('button', 'card-bump' + (done ? ' done' : ''), done ? '✓' : '+1');
-      bump.type = 'button';
-      bump.disabled = done;
-      bump.title = done ? '已看完' : '记一集';
-      bump.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        bump.disabled = true;
-        try {
-          const res = await api(`/api/anime/${item.id}/progress`, {
-            method: 'POST',
-            body: { action: 'next' }
-          });
-          if (res.changed) {
-            toast(`「${item.canonical_title}」第 ${res.changed.episode_number} 集已记`);
-          }
-          if (res.progress?.at_end && item.status !== 'completed') {
-            const ok = await askConfirm({
-              title: '全集观看完成',
-              message: `「${item.canonical_title}」全部 ${res.progress.total} 集都已看完，要把作品状态改为「已看完」吗？`,
-              confirmText: '改为已看完',
-              danger: false
-            });
-            if (ok) {
-              await api(`/api/anime/${item.id}/status`, {
-                method: 'POST',
-                body: { status: 'completed' }
-              });
-              toast(`已将「${item.canonical_title}」标为「已看完」`);
-            }
-          }
-          await load();
-        } catch (err) {
-          toast(err.message, true);
-          bump.disabled = false;
-        }
-      });
-      mini.appendChild(bump);
-    }
-
-    mini.addEventListener('click', () => openDetail(item.id));
-    cardsWrap.appendChild(mini);
-  }
-  strip.appendChild(cardsWrap);
 }
 
 function renderActiveFilterBar(listEl) {
@@ -2884,8 +2720,9 @@ function renderList() {
 }
 
 async function load() {
+  if (state.view === 'home') return loadHome();
   if (state.loading) return;
-  if (state.view === 'stats') return;
+  if (state.view === 'stats' || state.view === 'seasonal') return;
   state.loading = true;
   $('#loading').hidden = false;
 
@@ -2913,6 +2750,7 @@ async function load() {
       state.allLibraryList = state.list;
     }
     if (mediaRes?.data) {
+      state.mediaFiles = mediaRes.data;
       updateMediaSummaryMap(mediaRes.data);
     }
     renderTabs();
@@ -2925,6 +2763,522 @@ async function load() {
     state.loading = false;
     $('#loading').hidden = true;
   }
+}
+
+/* ---------------- 首页（定制三层布局：本周观看+最近盖章+小尺寸刻刻 / 追看Banner / 特别收藏+馆藏概况） ---------------- */
+
+async function loadHome() {
+  if (state.loading) return;
+  state.loading = true;
+  const year = new Date().getFullYear();
+  try {
+    const [animeRes, statsRes, mediaRes] = await Promise.all([
+      api('/api/anime'),
+      api(`/api/stats?year=${year}`).catch(() => null),
+      api('/api/media/files').catch(() => null)
+    ]);
+    state.allLibraryList = animeRes.data ?? [];
+    if (!state.keyword && !state.status && !state.tag && !state.archived && !state.favorite) {
+      state.list = state.allLibraryList;
+    }
+    state.homeStats = statsRes;
+    if (mediaRes?.data) {
+      state.mediaFiles = mediaRes.data;
+      updateMediaSummaryMap(mediaRes.data);
+    }
+    renderTabs();
+    renderStudioSidebar();
+    renderHome();
+    refreshTagsFilter();
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    state.loading = false;
+  }
+}
+
+function openLibraryWith(opts = {}) {
+  state.archived = Boolean(opts.archived);
+  state.favorite = Boolean(opts.favorite);
+  state.status = opts.status ?? '';
+  state.tag = opts.tag ?? '';
+  if (opts.layoutMode) setLayoutMode(opts.layoutMode);
+  renderTabs();
+  switchView('list');
+}
+
+function timeGreeting() {
+  const h = new Date().getHours();
+  if (h < 5) return { greet: '夜深了', sub: '注意休息，明天再追也不迟' };
+  if (h < 11) return { greet: '早安', sub: '新的一天，看看追番进度吧' };
+  if (h < 14) return { greet: '午安', sub: '午休时间，适合看一集轻松番' };
+  if (h < 18) return { greet: '下午好', sub: '翻开手账，记录今天的观影时刻' };
+  if (h < 22) return { greet: '晚上好', sub: '放映室已就绪，今晚看哪一部？' };
+  return { greet: '深夜放映时间', sub: '留一盏暖灯，慢慢看完这一集' };
+}
+
+function renderHome() {
+  const wrap = $('#home');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  const all = (state.allLibraryList.length ? state.allLibraryList : state.list).filter(
+    (it) => !it.deleted_at
+  );
+  const watching = all.filter((it) => it.status === 'watching');
+  const favorites = all.filter((it) => it.is_favorite);
+  const counts = computeStatusCounts();
+
+  // ================= 第一层：左（本周观看 + 最近盖章） | 右（小尺寸刻刻卡片） =================
+  const topRow = el('div', 'home-top-row');
+
+  const topLeft = el('div', 'home-top-left');
+  topLeft.appendChild(buildWeekCard(state.homeStats, all));
+  topLeft.appendChild(buildRecentCard(state.homeStats, all));
+  topRow.appendChild(topLeft);
+
+  const topRight = el('div', 'home-top-right');
+  topRight.appendChild(buildKekeCard(all, watching));
+  topRow.appendChild(topRight);
+
+  wrap.appendChild(topRow);
+
+  // ================= 第二层：现有的「正在追看」Banner =================
+  const bannerRow = el('div', 'home-banner-row');
+  if (watching.length > 0) {
+    renderWashiFocus(bannerRow, watching);
+  } else {
+    bannerRow.appendChild(buildEmptyWatchingBanner(all));
+  }
+  wrap.appendChild(bannerRow);
+
+  // ================= 第三层：下左（特别收藏） | 下右（馆藏概况） =================
+  const lower = el('div', 'home-lower');
+
+  // 下左：特别收藏
+  const favPanel = el('section', 'panel');
+  const favHead = el('div', 'panel-head');
+  favHead.appendChild(el('h2', 'panel-title', `特别收藏 (${favorites.length})`));
+  if (favorites.length > 0) {
+    const moreFav = el('button', 'link-btn', '全部');
+    moreFav.type = 'button';
+    moreFav.addEventListener('click', () => openLibraryWith({ favorite: true }));
+    favHead.appendChild(moreFav);
+  }
+  favPanel.appendChild(favHead);
+
+  if (favorites.length === 0) {
+    favPanel.appendChild(
+      el('div', 'panel-empty', '在作品详情或卡片上点亮 ★，常翻看的作品会陈列在这里。')
+    );
+  } else {
+    const strip = el('div', 'fav-strip');
+    for (const item of favorites.slice(0, 5)) {
+      const f = el('div', 'fav-item');
+      const cov = el('div', 'fav-cover');
+      const img = document.createElement('img');
+      img.alt = item.canonical_title || '';
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      img.src = coverProxyUrl(item.cover_path, 220);
+      img.onerror = () => {
+        img.style.display = 'none';
+        cov.style.background = coverStyle(item.canonical_title);
+      };
+      cov.appendChild(img);
+      if (item.rating) cov.appendChild(el('span', 'fav-score', `★ ${item.rating}`));
+      f.appendChild(cov);
+      f.appendChild(el('div', 'fav-title', item.canonical_title));
+      f.addEventListener('click', () => openDetail(item.id));
+      strip.appendChild(f);
+    }
+    favPanel.appendChild(strip);
+  }
+  lower.appendChild(favPanel);
+
+  // 下右：馆藏概况 + 本地媒体简报
+  const libPanel = el('section', 'panel');
+  const libHead = el('div', 'panel-head');
+  libHead.appendChild(el('h2', 'panel-title', '馆藏概况'));
+  const toLib = el('button', 'link-btn', '打开番剧库');
+  toLib.type = 'button';
+  toLib.addEventListener('click', () => openLibraryWith({ status: '' }));
+  libHead.appendChild(toLib);
+  libPanel.appendChild(libHead);
+
+  const totalCount = Math.max(1, counts.all);
+  const segDefs = [
+    { key: 'watching', label: '在看', count: counts.watching, cls: 'seg-watching' },
+    { key: 'want', label: '想看', count: counts.want, cls: 'seg-want' },
+    { key: 'completed', label: '看过', count: counts.completed, cls: 'seg-completed' },
+    { key: 'paused', label: '搁置', count: counts.paused, cls: 'seg-paused' },
+    { key: 'dropped', label: '抛弃', count: counts.dropped, cls: 'seg-dropped' }
+  ];
+  const bar = el('div', 'status-stack');
+  for (const s of segDefs) {
+    if (s.count <= 0) continue;
+    const seg = el('span', 'status-seg ' + s.cls);
+    seg.style.flex = String(s.count);
+    seg.title = `${s.label} ${s.count} 部 (${Math.round((s.count / totalCount) * 100)}%)`;
+    bar.appendChild(seg);
+  }
+  libPanel.appendChild(bar);
+
+  const legend = el('div', 'status-legend');
+  for (const s of segDefs) {
+    const row = el('button', 'legend-item');
+    row.type = 'button';
+    row.appendChild(el('span', 'legend-dot ' + s.cls));
+    row.appendChild(el('span', 'legend-label', s.label));
+    row.appendChild(el('strong', 'legend-val', String(s.count)));
+    row.addEventListener('click', () => openLibraryWith({ status: s.key }));
+    legend.appendChild(row);
+  }
+  libPanel.appendChild(legend);
+
+  let matchedFiles = 0;
+  let missingEps = 0;
+  for (const m of state.mediaSummaryByAnime.values()) {
+    matchedFiles += m.total || 0;
+    missingEps += m.missing || 0;
+  }
+  const totalFiles = Array.isArray(state.mediaFiles) ? state.mediaFiles.length : matchedFiles;
+  const mediaRow = el('div', 'media-sum');
+  const mediaInfo = el('div', 'media-sum-info');
+  mediaInfo.appendChild(el('span', 'media-sum-label', '本地媒体文件'));
+  mediaInfo.appendChild(
+    el(
+      'span',
+      'media-sum-val',
+      totalFiles > 0
+        ? `已收录 ${totalFiles} 个文件 · 关联 ${state.mediaSummaryByAnime.size} 部${missingEps > 0 ? ` · 缺 ${missingEps} 集` : ''}`
+        : '尚未扫描本地视频目录'
+    )
+  );
+  mediaRow.appendChild(mediaInfo);
+  const scanBtn = el('button', 'btn small', totalFiles > 0 ? '管理媒体' : '扫描目录');
+  scanBtn.type = 'button';
+  scanBtn.addEventListener('click', () => openMediaScanModal());
+  mediaRow.appendChild(scanBtn);
+  libPanel.appendChild(mediaRow);
+
+  lower.appendChild(libPanel);
+  wrap.appendChild(lower);
+}
+
+function buildEmptyWatchingBanner(all) {
+  const card = el('div', 'watching-hero empty-watching-hero');
+  const left = el('div', 'hero-left');
+  const info = el('div', 'hero-info');
+  info.appendChild(
+    el(
+      'div',
+      'hero-kicker',
+      all.length === 0 ? '● 欢迎来到次元刻度 · 放映室已就绪' : '● 当前没有标为「在看」的番剧'
+    )
+  );
+  info.appendChild(
+    el(
+      'div',
+      'hero-title',
+      all.length === 0
+        ? '先添加第一部动画，或从本季新番导览一键入库'
+        : '从番剧库挑选一部想看的作品开始追番吧'
+    )
+  );
+  left.appendChild(info);
+  card.appendChild(left);
+
+  const actions = el('div', 'hero-actions');
+  if (all.length > 0) {
+    const libBtn = el('button', 'btn small primary', '去番剧库挑选');
+    libBtn.type = 'button';
+    libBtn.addEventListener('click', () => openLibraryWith({ status: '' }));
+    actions.appendChild(libBtn);
+  } else {
+    const addBtn = el('button', 'btn small primary', '+ 新增第一部作品');
+    addBtn.type = 'button';
+    addBtn.addEventListener('click', () => openForm(null));
+    actions.appendChild(addBtn);
+  }
+  const seaBtn = el('button', 'btn small', '浏览本季新番');
+  seaBtn.type = 'button';
+  seaBtn.addEventListener('click', () => switchView('seasonal'));
+  actions.appendChild(seaBtn);
+  card.appendChild(actions);
+  return card;
+}
+
+function buildKekeCard(all, watching) {
+  const moodKey = state.kekeMood || getDefaultMascotMood();
+  const mood = MASCOT_MOODS[moodKey] || MASCOT_MOODS.normal;
+  const g = timeGreeting();
+  const today = new Date().toLocaleDateString('zh-CN', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short'
+  });
+
+  const card = el('section', 'rail-card keke-card');
+
+  const layout = el('div', 'keke-showcase-grid');
+
+  // 左侧：刻刻设定6中最大的一张主视觉插画 (hero-main.png)，完整展示不裁切
+  const heroFrame = el('div', 'keke-hero-frame');
+  heroFrame.title = '点击换一句台词 · 双击摸摸头';
+  const heroImg = document.createElement('img');
+  heroImg.className = 'keke-hero-img';
+  heroImg.src = '/assets/keke-pack/hero-main.png';
+  heroImg.alt = '刻刻 · 追番助手';
+  heroFrame.appendChild(heroImg);
+
+  const badge = el('span', 'keke-badge keke-floating-badge', mood.badge);
+  heroFrame.appendChild(badge);
+
+  heroFrame.addEventListener('click', () => cycleKekeQuote());
+  heroFrame.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    patKekeOnHome();
+  });
+  layout.appendChild(heroFrame);
+
+  // 右侧：标题问候 + 表情气泡台词 + 互动按钮栏（去除与馆藏概况重合的在库/在看数据）
+  const side = el('div', 'keke-companion-col');
+
+  const meta = el('div', 'keke-meta');
+  const dateRow = el('div', 'keke-date-row');
+  dateRow.appendChild(el('span', 'keke-title', '刻刻 · 放映室伴读'));
+  dateRow.appendChild(el('span', 'keke-date', `${today} · ${g.greet}`));
+  meta.appendChild(dateRow);
+  meta.appendChild(el('div', 'keke-sub', g.sub));
+  side.appendChild(meta);
+
+  const speechRow = el('div', 'keke-speech-row');
+  const face = document.createElement('img');
+  face.className = 'keke-face-chip';
+  face.src = mood.avatar || '/assets/keke-pack/avatar-smile.png';
+  face.alt = mood.label || '刻刻';
+  face.title = `${mood.label} · 点击切换表情与台词`;
+  face.addEventListener('click', () => cycleKekeQuote());
+  speechRow.appendChild(face);
+
+  const speech = el('div', 'keke-speech');
+  speech.id = 'homeKekeSpeech';
+  speech.innerHTML = getMascotContextQuote(watching);
+  speechRow.appendChild(speech);
+  side.appendChild(speechRow);
+
+  const foot = el('div', 'keke-actions');
+  const patBtn = el('button', 'keke-act-btn', '👋 摸摸头');
+  patBtn.type = 'button';
+  patBtn.addEventListener('click', () => patKekeOnHome());
+  foot.appendChild(patBtn);
+
+  const nextQuoteBtn = el('button', 'keke-act-btn', '💬 换一句');
+  nextQuoteBtn.type = 'button';
+  nextQuoteBtn.addEventListener('click', () => cycleKekeQuote());
+  foot.appendChild(nextQuoteBtn);
+
+  const sheetBtn = el('button', 'keke-act-btn', '📖 设定图');
+  sheetBtn.type = 'button';
+  sheetBtn.addEventListener('click', () => openMascotGalleryModal());
+  foot.appendChild(sheetBtn);
+
+  side.appendChild(foot);
+  layout.appendChild(side);
+  card.appendChild(layout);
+  return card;
+}
+
+function pulseHomeKekeFrame() {
+  const frame = document.querySelector('.keke-hero-frame');
+  if (!frame) return;
+  frame.classList.remove('is-pulsing');
+  void frame.offsetWidth;
+  frame.classList.add('is-pulsing');
+}
+
+function cycleKekeQuote() {
+  const item = MASCOT_QUOTES[mascotQuoteIdx % MASCOT_QUOTES.length];
+  mascotQuoteIdx += 1;
+  const text = typeof item === 'string' ? item : item.text;
+  const moodKey = typeof item === 'object' && item.mood ? item.mood : getDefaultMascotMood();
+  state.kekeMood = moodKey;
+  const mood = MASCOT_MOODS[moodKey] || MASCOT_MOODS.normal;
+
+  const speech = $('#homeKekeSpeech');
+  if (speech) speech.innerHTML = text;
+  const face = document.querySelector('.keke-face-chip');
+  if (face && mood.avatar) face.src = mood.avatar;
+  const badge = document.querySelector('.keke-badge');
+  if (badge) badge.textContent = mood.badge;
+  pulseHomeKekeFrame();
+}
+
+function patKekeOnHome() {
+  const reactions = [
+    { mood: 'shy', text: '诶嘿嘿……发型要被摸乱啦，今天打算看哪一集？' },
+    { mood: 'cheer', text: '收到摸摸能量！今晚的追番印章我已经帮你备好朱砂啦～' },
+    { mood: 'normal', text: '小助手白猫也凑过来蹭了蹭你的手心 ♪' }
+  ];
+  const pick = reactions[Math.floor(Math.random() * reactions.length)];
+  state.kekeMood = pick.mood;
+  const mood = MASCOT_MOODS[pick.mood] || MASCOT_MOODS.shy;
+  const speech = $('#homeKekeSpeech');
+  if (speech) speech.textContent = pick.text;
+  const face = document.querySelector('.keke-face-chip');
+  if (face && mood.avatar) face.src = mood.avatar;
+  const badge = document.querySelector('.keke-badge');
+  if (badge) badge.textContent = mood.badge;
+  pulseHomeKekeFrame();
+}
+
+function buildWeekCard(stats, all = []) {
+  const card = el('section', 'rail-card week-card');
+  const head = el('div', 'rail-head');
+  head.appendChild(el('span', 'rail-title', '本周观看'));
+  const more = el('button', 'link-btn', '热力图 →');
+  more.type = 'button';
+  more.addEventListener('click', () => switchView('stats'));
+  head.appendChild(more);
+  card.appendChild(head);
+
+  const hmMap = new Map();
+  if (stats && Array.isArray(stats.heatmap)) {
+    for (const d of stats.heatmap) hmMap.set(d.date, Number(d.count || 0));
+  }
+  const days = [];
+  const weekdayShort = ['日', '一', '二', '三', '四', '五', '六'];
+  const now = new Date();
+  let weekTotal = 0;
+  let activeDays = 0;
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const c = hmMap.get(key) || 0;
+    weekTotal += c;
+    if (c > 0) activeDays += 1;
+    days.push({ key, label: i === 0 ? '今' : weekdayShort[d.getDay()], count: c, isToday: i === 0 });
+  }
+  const maxC = Math.max(3, ...days.map((d) => d.count));
+
+  const summary = el('div', 'week-nums');
+  const mainStat = el('div', 'week-main');
+  mainStat.appendChild(el('strong', 'week-big', String(weekTotal)));
+  mainStat.appendChild(el('span', 'week-unit', '集 / 近 7 天'));
+  summary.appendChild(mainStat);
+  const streak = stats?.streak?.current || 0;
+  if (streak > 0) {
+    summary.appendChild(el('span', 'week-streak', `🔥 连续 ${streak} 天`));
+  } else {
+    summary.appendChild(el('span', 'week-streak', `活跃 ${activeDays} / 7 天`));
+  }
+  card.appendChild(summary);
+
+  const bars = el('div', 'week-bars');
+  for (const d of days) {
+    const col = el('div', 'week-col' + (d.isToday ? ' today' : '') + (d.count > 0 ? ' active' : ''));
+    col.title = `${d.key}：观看 ${d.count} 集`;
+    col.appendChild(el('span', 'week-val', d.count > 0 ? String(d.count) : '·'));
+    const track = el('div', 'week-bar-track');
+    const fill = el('div', 'week-bar-fill');
+    fill.style.height = d.count > 0 ? `${Math.max(20, Math.round((d.count / maxC) * 100))}%` : '4px';
+    track.appendChild(fill);
+    col.appendChild(track);
+    col.appendChild(el('span', 'week-day', d.label));
+    bars.appendChild(col);
+  }
+  card.appendChild(bars);
+
+  const libWatchedEps = Array.isArray(all)
+    ? all.reduce((sum, it) => sum + Number(it.episode_watched || 0), 0)
+    : 0;
+  const totalWatchedEps = Math.max(stats?.counts?.episodes_watched_total ?? 0, libWatchedEps);
+  const todayCount = days[days.length - 1]?.count || 0;
+  const foot = el('div', 'week-foot');
+  foot.appendChild(
+    el('span', 'week-foot-item', todayCount > 0 ? `今日已看 ${todayCount} 集` : '今日尚未打卡')
+  );
+  foot.appendChild(
+    el('span', 'week-foot-item', `累计已看 ${totalWatchedEps} 集`)
+  );
+  card.appendChild(foot);
+  return card;
+}
+
+function formatRecentStampDate(raw) {
+  if (!raw) return '';
+  const str = String(raw).slice(0, 10);
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (str === todayKey) return '今天';
+  const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yestKey = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+  if (str === yestKey) return '昨天';
+  return str.slice(5);
+}
+
+function buildRecentCard(stats, all) {
+  const card = el('section', 'rail-card recent-card');
+  const head = el('div', 'rail-head');
+  head.appendChild(el('span', 'rail-title', '最近盖章'));
+  const more = el('button', 'link-btn', '全部记录 →');
+  more.type = 'button';
+  more.addEventListener('click', () => switchView('stats'));
+  head.appendChild(more);
+  card.appendChild(head);
+
+  const byId = new Map(all.map((it) => [Number(it.id), it]));
+  const recent = stats && Array.isArray(stats.recent) ? stats.recent.slice(0, 4) : [];
+
+  if (recent.length === 0) {
+    const recentlyUpdated = [...all]
+      .filter((it) => Number(it.episode_watched || 0) > 0)
+      .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
+      .slice(0, 4);
+    if (recentlyUpdated.length === 0) {
+      card.appendChild(el('div', 'rail-empty', '还没有分集打卡记录，看一集盖个章吧。'));
+      return card;
+    }
+    const ul = el('div', 'recent-list');
+    for (const r of recentlyUpdated) {
+      const row = el('button', 'recent-row');
+      row.type = 'button';
+      const thumb = el('span', 'recent-thumb');
+      paintCover(thumb, r.canonical_title, r.cover_path, 80);
+      row.appendChild(thumb);
+      row.appendChild(el('span', 'recent-title', r.canonical_title));
+      row.appendChild(el('span', 'recent-ep', `已看 ${r.episode_watched} 集`));
+      row.addEventListener('click', () => openDetail(r.id));
+      ul.appendChild(row);
+    }
+    card.appendChild(ul);
+    return card;
+  }
+
+  const ul = el('div', 'recent-list');
+  for (const r of recent) {
+    const row = el('button', 'recent-row');
+    row.type = 'button';
+    const matched = byId.get(Number(r.anime_id));
+    const thumb = el('span', 'recent-thumb');
+    paintCover(thumb, r.canonical_title || matched?.canonical_title || '作品', matched?.cover_path, 80);
+    row.appendChild(thumb);
+
+    row.appendChild(el('span', 'recent-title', r.canonical_title || '作品'));
+
+    const epTag = Number(r.season_number || 1) > 1
+      ? `S${r.season_number}·#${r.episode_number}`
+      : `#${r.episode_number}`;
+    row.appendChild(el('span', 'recent-ep', epTag));
+
+    const dateStr = formatRecentStampDate(r.watched_at);
+    if (dateStr) row.appendChild(el('span', 'recent-date', dateStr));
+    row.addEventListener('click', () => openDetail(r.anime_id));
+    ul.appendChild(row);
+  }
+  card.appendChild(ul);
+  return card;
 }
 
 /* ---------------- 抽屉详情 ---------------- */
@@ -4350,10 +4704,13 @@ function formatHours(minutes) {
 
 async function switchView(view) {
   state.view = view;
+  const isHome = view === 'home';
   const isStats = view === 'stats';
   const isSeasonal = view === 'seasonal';
   const isList = view === 'list';
 
+  const homeEl = $('#home');
+  if (homeEl) homeEl.hidden = !isHome;
   $('#list').hidden = !isList;
   $('#stats').hidden = !isStats;
   $('#seasonal').hidden = !isSeasonal;
@@ -4362,22 +4719,30 @@ async function switchView(view) {
   $('#empty').hidden = true;
   $('#loading').hidden = true;
   $('.filters').hidden = !isList;
-  $('.searchbox').hidden = !isList;
+  $('.searchbox').hidden = !(isList || isHome);
+  document.body.dataset.view = view;
 
-  $('#statsBtn').textContent = isStats ? '返回账本' : '统计';
-  $('#statsBtn').classList.toggle('active-nav', isStats);
-  $('#seasonalBtn').textContent = isSeasonal ? '返回账本' : '新番导览';
-  $('#seasonalBtn').classList.toggle('active-nav', isSeasonal);
+  const statsBtn = $('#statsBtn');
+  if (statsBtn) {
+    statsBtn.textContent = isStats ? '返回账本' : '统计';
+    statsBtn.classList.toggle('active-nav', isStats);
+  }
+  const seasonalBtn = $('#seasonalBtn');
+  if (seasonalBtn) {
+    seasonalBtn.textContent = isSeasonal ? '返回账本' : '新番导览';
+    seasonalBtn.classList.toggle('active-nav', isSeasonal);
+  }
 
   if (!isList) {
-    $("#stat").textContent = '';
+    $('#stat').textContent = '';
     const batchBar = $('#ledgerBatchBar');
     if (batchBar) batchBar.hidden = true;
   }
 
   renderStudioSidebar();
   closeDrawer();
-  if (isStats) await loadStats();
+  if (isHome) await loadHome();
+  else if (isStats) await loadStats();
   else if (isSeasonal) await loadSeasonal();
   else await load();
 }
@@ -8534,7 +8899,15 @@ function bindEvents() {
     if (clearBtn) clearBtn.hidden = !value;
     searchTimer = setTimeout(() => {
       state.keyword = value.trim();
-      load();
+      if (state.view === 'home' && state.keyword) {
+        state.status = '';
+        state.favorite = false;
+        state.archived = false;
+        renderTabs();
+        switchView('list');
+      } else {
+        load();
+      }
     }, 240);
   });
 
@@ -8573,21 +8946,31 @@ function bindEvents() {
     showMascotBubble({ text, mood, sideImg: moodInfo.pose, duration: 9500, animate: true });
   });
   $('#seasonalBtn')?.addEventListener('click', () =>
-    switchView(state.view === 'seasonal' ? 'list' : 'seasonal')
+    switchView(state.view === 'seasonal' ? 'home' : 'seasonal')
   );
   $('#mediaScanBtn')?.addEventListener('click', () => openMediaScanModal());
   $('#brandHome')?.addEventListener('click', () => {
-    if (state.view !== 'list') switchView('list');
+    if (state.view !== 'home') switchView('home');
   });
-  $('#settingsBtn').addEventListener('click', () => openSettingsModal());
+  $('#settingsBtn')?.addEventListener('click', () => openSettingsModal());
   $('#themeToggleBtn')?.addEventListener('click', () => toggleWashiTheme());
-  $('#statsBtn').addEventListener('click', () => switchView(state.view === 'stats' ? 'list' : 'stats'));
+  $('#statsBtn')?.addEventListener('click', () => switchView(state.view === 'stats' ? 'home' : 'stats'));
   $('#batchManageBtn')?.addEventListener('click', () => {
+    const more = $('#moreMenu');
+    if (more) more.open = false;
     state.ledgerBatchMode = !state.ledgerBatchMode;
     if (!state.ledgerBatchMode) state.ledgerSelected.clear();
     renderList();
   });
-  $('#enrichAllBtn').addEventListener('click', enrichAll);
+  $('#enrichAllBtn')?.addEventListener('click', () => {
+    const more = $('#moreMenu');
+    if (more) more.open = false;
+    enrichAll();
+  });
+  document.addEventListener('click', (e) => {
+    const more = $('#moreMenu');
+    if (more && more.open && !more.contains(e.target)) more.open = false;
+  });
   $('#drawerClose').addEventListener('click', closeDrawer);
   $('#modalClose').addEventListener('click', closeForm);
   $('#scrim').addEventListener('click', closeDrawer);
@@ -8619,14 +9002,20 @@ function bindEvents() {
 
     if (e.key === '/') {
       e.preventDefault();
-      if (state.view !== 'list') switchView('list').then(() => $('#q')?.focus());
-      else $('#q')?.focus();
+      if (state.view !== 'list' && state.view !== 'home') {
+        switchView('list').then(() => $('#q')?.focus());
+      } else {
+        $('#q')?.focus();
+      }
     } else if (e.key === '1' && !$('#drawer').classList.contains('open')) {
-      setLayoutMode('grid');
+      if (state.view !== 'list') switchView('list').then(() => setLayoutMode('grid'));
+      else setLayoutMode('grid');
     } else if (e.key === '2' && !$('#drawer').classList.contains('open')) {
-      setLayoutMode('table');
+      if (state.view !== 'list') switchView('list').then(() => setLayoutMode('table'));
+      else setLayoutMode('table');
     } else if (e.key === '3' && !$('#drawer').classList.contains('open')) {
-      setLayoutMode('board');
+      if (state.view !== 'list') switchView('list').then(() => setLayoutMode('board'));
+      else setLayoutMode('board');
     } else if (e.key === 'd') {
       e.preventDefault();
       toggleWashiTheme();
@@ -8635,7 +9024,7 @@ function bindEvents() {
       openForm(null);
     } else if (e.key === 's') {
       e.preventDefault();
-      switchView(state.view === 'seasonal' ? 'list' : 'seasonal');
+      switchView(state.view === 'seasonal' ? 'home' : 'seasonal');
     } else if (e.key === 'k') {
       e.preventDefault();
       triggerMascotSmartAdvice();
@@ -8684,7 +9073,7 @@ async function boot() {
   renderStudioSidebar();
   bindEvents();
   await loadRuntimeConfig();
-  await load();
+  await switchView(state.view);
   handleHash();
   window.addEventListener('hashchange', handleHash);
 
